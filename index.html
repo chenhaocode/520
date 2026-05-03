@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    专属表白页
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        love: '#ff6b81',
+                        loveLight: '#ffccd5',
+                    },
+                    fontFamily: {
+                        love: ['Georgia', 'serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 爱心飘落动画 */
+        .heart {
+            position: fixed;
+            top: -50px;
+            color: #ff6b81;
+            font-size: 20px;
+            animation: fall linear forwards;
+            z-index: -1;
+            opacity: 0.8;
+        }
+        @keyframes fall {
+            to {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-loveLight/30 to-white min-h-screen overflow-x-hidden">
+    <!-- 爱心容器 -->
+    <div id="hearts-container"></div>
+
+    <!-- 主内容区 -->
+    <div class="container mx-auto px-4 py-10 max-w-lg">
+        <div id="app" class="fade-in">
+            <!-- 加载中 -->
+            <div id="loading" class="text-center py-20">
+                <i class="fa fa-heart text-5xl text-love animate-pulse"></i>
+                <p class="mt-4 text-gray-600">加载中...</p>
+            </div>
+
+            <!-- 首页 -->
+            <div id="home" class="hidden text-center py-20">
+                <i class="fa fa-heart text-6xl text-love mb-6"></i>
+                <h1 class="text-3xl font-love text-gray-800 mb-4">专属表白网站</h1>
+                <p class="text-gray-600 mb-8">在这里，你可以创建专属的表白页，把心意传递给TA</p>
+                <a href="/admin" class="inline-block bg-love hover:bg-love/90 text-white px-8 py-3 rounded-full font-medium transition-all pulse">
+                    去创建我的表白 <i class="fa fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <!-- 管理后台 -->
+            <div id="admin" class="hidden">
+                <div class="text-center mb-8">
+                    <i class="fa fa-pencil text-4xl text-love mb-4"></i>
+                    <h2 class="text-2xl font-love text-gray-800">创建专属表白页</h2>
+                    <p class="text-gray-500 mt-2">填写信息，生成专属链接发给TA</p>
+                </div>
+                <form id="create-form" class="bg-white rounded-2xl shadow-lg p-6 space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">你的名字（表白者）</label>
+                        <input type="text" id="from" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-love/50" placeholder="比如：小明">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">TA的名字（被表白者）</label>
+                        <input type="text" id="to" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-love/50" placeholder="比如：小红">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">想对TA说的话</label>
+                        <textarea id="content" required rows="4" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-love/50" placeholder="写下你想对TA说的话..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">管理员密码</label>
+                        <input type="password" id="admin-password" required class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-love/50" placeholder="输入你设置的管理密码">
+                    </div>
+                    <button type="submit" class="w-full bg-love hover:bg-love/90 text-white py-3 rounded-xl font-medium transition-all">
+                        生成专属表白链接 <i class="fa fa-heart ml-2"></i>
+                    </button>
+                </form>
+                <div id="result" class="hidden mt-6 bg-green-50 border border-green-200 rounded-xl p-4">
+                    <p class="text-green-700 font-medium mb-2">✅ 创建成功！这是你的专属链接：</p>
+                    <a id="result-link" target="_blank" class="text-love break-all font-medium"></a>
+                    <p class="text-gray-500 text-sm mt-2">把这个链接发给TA，TA打开就能看到你的心意啦~</p>
+                </div>
+            </div>
+
+            <!-- 表白页 -->
+            <div id="confession" class="hidden">
+                <!-- 未处理状态 -->
+                <div id="pending-view">
+                    <div class="text-center mb-6">
+                        <i class="fa fa-heart text-5xl text-love mb-4 pulse"></i>
+                        <h2 class="text-2xl font-love text-gray-800">
+                            <span id="from-name"></span> 向你表白啦！
+                        </h2>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                        <p class="text-gray-700 text-lg leading-relaxed" id="confession-content"></p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button id="reject-btn" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-4 rounded-xl font-medium transition-all">
+                            <i class="fa fa-times mr-2"></i> 拒绝
+                        </button>
+                        <button id="accept-btn" class="flex-1 bg-love hover:bg-love/90 text-white py-4 rounded-xl font-medium transition-all pulse">
+                            <i class="fa fa-heart mr-2"></i> 我愿意！
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 已同意状态 -->
+                <div id="accepted-view" class="hidden text-center">
+                    <div class="mb-6">
+                        <i class="fa fa-heart text-6xl text-love mb-4"></i>
+                        <h2 class="text-3xl font-love text-love font-bold">表白成功！</h2>
+                        <p class="text-gray-600 mt-2">
+                            <span id="from-name-2"></span> &nbsp;❤️&nbsp; <span id="to-name-2"></span>
+                        </p>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6 mb-4">
+                        <p class="text-gray-500 text-sm mb-2">TA的表白：</p>
+                        <p class="text-gray-700" id="confession-content-2"></p>
+                    </div>
+                    <div class="bg-love/10 rounded-2xl p-6 border border-love/20">
+                        <p class="text-love text-sm mb-2">TA的回应：</p>
+                        <p class="text-gray-800 text-lg font-medium" id="response-message"></p>
+                    </div>
+                </div>
+
+                <!-- 已拒绝状态 -->
+                <div id="rejected-view" class="hidden text-center">
+                    <div class="mb-6">
+                        <i class="fa fa-heart-o text-5xl text-gray-400 mb-4"></i>
+                        <h2 class="text-2xl font-love text-gray-500">很遗憾...</h2>
+                    </div>
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <p class="text-gray-600">TA拒绝了这次表白</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 404 -->
+            <div id="not-found" class="hidden text-center py-20">
+                <i class="fa fa-exclamation-circle text-5xl text-gray-400 mb-4"></i>
+                <h2 class="text-2xl text-gray-600">页面不存在</h2>
+                <p class="text-gray-500 mt-2">这个表白链接可能已经失效了</p>
+                <a href="/" class="inline-block mt-6 text-love">返回首页</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 爱心飘落效果
+        function createHearts() {
+            const container = document.getElementById('hearts-container');
+            setInterval(() => {
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.innerHTML = ['❤️', '💕', '💗', '💓'][Math.floor(Math.random()*4)];
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.fontSize = (Math.random() * 15 + 10) + 'px';
+                heart.style.animationDuration = (Math.random() * 3 + 5) + 's';
+                container.appendChild(heart);
+                setTimeout(() => heart.remove(), 8000);
+            }, 500);
+        }
+        createHearts();
+
+        // 路由处理
+        async function router() {
+            const path = window.location.pathname;
+            const parts = path.split('/').filter(p => p);
+
+            // 隐藏所有视图
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('home').classList.add('hidden');
+            document.getElementById('admin').classList.add('hidden');
+            document.getElementById('confession').classList.add('hidden');
+            document.getElementById('not-found').classList.add('hidden');
+
+            if (parts.length === 0) {
+                // 首页
+                document.getElementById('home').classList.remove('hidden');
+                return;
+            }
+
+            if (parts[0] === 'admin') {
+                // 管理后台
+                document.getElementById('admin').classList.remove('hidden');
+                initAdminForm();
+                return;
+            }
+
+            // 表白页
+            const id = parts[0];
+            try {
+                const res = await fetch(`/api/${id}`);
+                if (!res.ok) throw new Error('Not found');
+                const data = await res.json();
+                
+                document.getElementById('confession').classList.remove('hidden');
+                document.getElementById('from-name').textContent = data.from;
+                document.getElementById('confession-content').textContent = data.content;
+                
+                document.getElementById('from-name-2').textContent = data.from;
+                document.getElementById('to-name-2').textContent = data.to;
+                document.getElementById('confession-content-2').textContent = data.content;
+
+                if (data.status === 'accepted') {
+                    document.getElementById('pending-view').classList.add('hidden');
+                    document.getElementById('accepted-view').classList.remove('hidden');
+                    document.getElementById('response-message').textContent = data.message;
+                } else if (data.status === 'rejected') {
+                    document.getElementById('pending-view').classList.add('hidden');
+                    document.getElementById('rejected-view').classList.remove('hidden');
+                } else {
+                    // pending状态，绑定按钮
+                    initRespondButtons(id);
+                }
+
+            } catch (e) {
+                document.getElementById('not-found').classList.remove('hidden');
+            }
+        }
+
+        // 管理后台表单
+        function initAdminForm() {
+            const form = document.getElementById('create-form');
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const from = document.getElementById('from').value;
+                const to = document.getElementById('to').value;
+                const content = document.getElementById('content').value;
+                const password = document.getElementById('admin-password').value;
+
+                try {
+                    const res = await fetch('/api/create', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({from, to, content, password})
+                    });
+                    const result = await res.json();
+                    if (result.error) {
+                        alert(result.error);
+                        return;
+                    }
+                    const link = `${window.location.origin}/${result.id}`;
+                    document.getElementById('result-link').href = link;
+                    document.getElementById('result-link').textContent = link;
+                    document.getElementById('result').classList.remove('hidden');
+                } catch (e) {
+                    alert('创建失败，请重试');
+                }
+            };
+        }
+
+        // 回应按钮
+        function initRespondButtons(id) {
+            document.getElementById('accept-btn').onclick = async () => {
+                const message = prompt('输入你想对TA说的话：', '我也喜欢你！');
+                if (message === null) return;
+                await respond(id, 'accepted', message);
+            };
+            document.getElementById('reject-btn').onclick = async () => {
+                if (!confirm('确定要拒绝这次表白吗？')) return;
+                await respond(id, 'rejected', '');
+            };
+        }
+
+        async function respond(id, status, message) {
+            try {
+                const res = await fetch(`/api/${id}/respond`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status, message})
+                });
+                if (res.ok) {
+                    window.location.reload();
+                } else {
+                    alert('操作失败，请重试');
+                }
+            } catch (e) {
+                alert('网络错误，请重试');
+            }
+        }
+
+        // 初始化
+        router();
+    </script>
+</body>
+</html>
