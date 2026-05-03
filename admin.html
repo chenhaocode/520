@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表白网站管理后台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-10 max-w-2xl">
+        <!-- 登录页 -->
+        <div id="loginBox" class="bg-white rounded-2xl shadow-lg p-8">
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">管理员登录</h2>
+            <input type="password" id="pwd" placeholder="请输入管理员密码" class="w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400">
+            <button id="loginBtn" class="w-full mt-4 bg-rose-500 text-white py-3 rounded-xl hover:bg-rose-600 transition-all">登录后台</button>
+        </div>
+
+        <!-- 管理首页 -->
+        <div id="adminBox" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">表白数据管理中心</h2>
+            <div id="listBox" class="space-y-4"></div>
+        </div>
+    </div>
+
+    <script>
+        const loginBox = document.getElementById('loginBox');
+        const adminBox = document.getElementById('adminBox');
+        const listBox = document.getElementById('listBox');
+
+        // 登录验证
+        document.getElementById('loginBtn').onclick = async()=>{
+            const pwd = document.getElementById('pwd').value;
+            if(!pwd) return alert('请输入密码');
+            const res = await fetch('/api/admin-list',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({pwd})
+            });
+            const data = await res.json();
+            if(data.error) return alert(data.error);
+            
+            // 登录成功，加载列表
+            loginBox.classList.add('hidden');
+            adminBox.classList.remove('hidden');
+            renderList(data.list);
+        }
+
+        // 渲染表白列表
+        function renderList(list){
+            if(list.length === 0){
+                listBox.innerHTML = '<p class="text-center text-gray-400 py-10">暂无表白数据</p>';
+                return;
+            }
+            listBox.innerHTML = '';
+            list.forEach(item=>{
+                const statusText = item.status==='pending'?'未回应':item.status==='agree'?'表白成功':'表白失败';
+                const statusColor = item.status==='pending'?'text-gray-500':item.status==='agree'?'text-green-500':'text-red-500';
+                listBox.innerHTML += `
+                <div class="bg-white rounded-xl shadow p-5">
+                    <div class="flex justify-between items-center mb-2">
+                        <p class="font-medium">${item.from} → ${item.to}</p>
+                        <span class="text-sm ${statusColor}">${statusText}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">${item.content}</p>
+                    ${item.reply ? `<p class="text-xs text-green-600">对方回应：${item.reply}</p>` : ''}
+                    <button data-id="${item.id}" class="del-btn mt-3 text-xs text-red-500 hover:text-red-700"><i class="fa fa-trash"></i> 删除记录</button>
+                </div>`
+            })
+
+            // 删除事件
+            document.querySelectorAll('.del-btn').forEach(btn=>{
+                btn.onclick = async()=>{
+                    if(!confirm('确定删除该表白记录？')) return;
+                    const id = btn.dataset.id;
+                    const pwd = document.getElementById('pwd').value;
+                    const res = await fetch('/api/admin-list',{
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({pwd,delId:id})
+                    });
+                    const data = await res.json();
+                    if(data.success){
+                        alert('删除成功');
+                        location.reload();
+                    }
+                }
+            })
+        }
+    </script>
+</body>
+</html>
