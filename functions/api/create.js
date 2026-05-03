@@ -1,40 +1,33 @@
 export async function onRequestPost(context) {
-    const { CONFESSIONS_KV, ADMIN_PASSWORD } = context.env;
+    const { DB, CONFESS_CACHE_KV } = context.env;
     const body = await context.request.json();
+    const { from, to, content } = body;
 
-    // 验证管理员密码
-    if (body.password !== ADMIN_PASSWORD) {
-        return new Response(JSON.stringify({ error: '管理员密码错误' }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 401
-        });
+    if(!from || !to || !content){
+        return new Response(JSON.stringify({error:"参数不全"}),{
+            headers:{"Content-Type":"application/json"},status:400
+        })
     }
 
-    // 生成随机6位ID
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    // 生成6位唯一ID
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
     let id;
-    do {
-        id = '';
-        for (let i = 0; i < 6; i++) {
-            id += chars[Math.floor(Math.random() * chars.length)];
-        }
-    } while (await CONFESSIONS_KV.get(id)); // 确保ID不重复
+    do{
+        id = Array.from({length:6},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
+        const exist = await DB.prepare("SELECT id FROM confession WHERE id = ?").bind(id).first();
+    }while(exist);
 
-    // 保存数据
-    const data = {
-        id,
-        from: body.from,
-        to: body.to,
-        content: body.content,
-        createdAt: Date.now(),
-        status: 'pending',
-        message: '',
-        respondedAt: null
-    };
+    // D1写入数据
+    await DB.prepare(`INSERT INTO confession (id,fromName,toName,content,status,reply,createTime) VALUES (?,?,?,?,?,?,?)`)
+    .bind(id,from,to,content,"pending","",Date.now())
+    .run();
 
-    await CONFESSIONS_KV.put(id, JSON.stringify(data));
+    // KV缓存
+    await CONFESS_CACHE_KV.put(id,JSON.stringify({
+        id,from,to,content,status:"pending",reply:""
+    }),{expirationTtl:86400});
 
-    return new Response(JSON.stringify({ id }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({id}),{
+        headers:{"Content-Type":"application/json"}
+    })
 }
